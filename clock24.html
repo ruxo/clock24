@@ -22,6 +22,8 @@
                 }, 1000);
             }
             function Clock(){
+                "use strict";
+
                 var self = this;
 
                 var canvas = $("#clock");
@@ -40,9 +42,12 @@
                 canvas.attr("width", w);
                 canvas.attr("height", h);
 
+                var BACKGROUND_COLOR = "#222";
+
                 var dialLineWidth = 50;
                 var handLineWidth = 25;
                 var buttonRadius = 50;
+                var innerButton = 30;
                 var r = 1000 -dialLineWidth/2;   // so the edge of circle is aligned with browse edge.
                 var handRadius = 750;
 
@@ -50,7 +55,13 @@
                     g.beginPath();
                     g.arc(0,0,buttonRadius,0, Math.PI*2, false); 
                     g.closePath();
-                    g.fillStyle = "silver";
+                    g.fillStyle = "red";
+                    g.fill();
+
+                    g.beginPath();
+                    g.arc(0,0,innerButton,0, Math.PI*2, false);
+                    g.closePath();
+                    g.fillStyle = BACKGROUND_COLOR;
                     g.fill();
                 }
                 function _drawDial(){
@@ -70,35 +81,40 @@
                     g.rotate( timeAngle );
 
                     g.lineWidth = handLineWidth;
+                    g.lineCap = 'round';
                     g.strokeStyle = "red";
                     g.beginPath();
                     g.moveTo(0,0);
                     g.lineTo(handRadius, 0);
-                    g.closePath();
                     g.stroke();
 
                     var minute100 = (now.getMinutes() * 60 + now.getSeconds()) / 36;
                     g.fillStyle = "red";
-                    g.font = "2em sans-serif";
+                    g.font = "50px sans-serif";
                     g.fillText(minute100.toFixed(1), buttonRadius, -handLineWidth);
                     g.restore();
-
-                    for(var i=1; i<=24; ++i)
-                        _drawHour(i);
-                    //_drawHour(now.getHours());
-                    //_drawHour(now.getHours() + 1);
                 }
+                var HOUR_TICK_HALF_ANGLE = Math.PI/180;
                 function _drawHour(hour){
                     g.save();
-                    g.font = "40px serif";
+                    var hourAngle = hour * oneHourAngle + midnightAngle;
+
+                    // draw hour tick
+                    var tickLength = dialLineWidth;
+                    g.beginPath();
+                    g.arc(0,0,r-dialLineWidth+1, hourAngle-HOUR_TICK_HALF_ANGLE, hourAngle+HOUR_TICK_HALF_ANGLE, false);
+                    g.lineWidth = tickLength;
+                    g.lineCap = "butt";
+                    g.stroke();
+
+                    g.font = "72px serif";
 
                     var hourText = hour;
 
-                    var hourAngle = hour * oneHourAngle + midnightAngle;
                     var metrics = g.measureText(hourText);
 
                     g.rotate(hourAngle);
-                    var startNormal = r -dialLineWidth;
+                    var startNormal = r -130;
                     g.translate(startNormal, 0);
 
                     g.fillStyle = "red";
@@ -108,7 +124,7 @@
                     g.fill();
 
                     g.rotate( -hourAngle);
-                    g.translate(-metrics.width/2, 10);
+                    g.translate(-metrics.width/2, 25);
 
                     g.fillStyle = "gray";
                     g.fillText(hourText, 0,0);
@@ -124,7 +140,7 @@
 
                 self.render = function(){
                     g.save();
-                    g.fillStyle = "#222";
+                    g.fillStyle = BACKGROUND_COLOR;
                     g.fillRect(0,0, w,h);
 
                     var fitSize = Math.min(w/2, h/2);
@@ -135,6 +151,10 @@
                     _drawDial();
                     _drawHand();
                     _drawCenterButton();
+
+                    for(var i=1; i<=24; ++i)
+                        _drawHour(i);
+                        
                     g.restore();
                 };
 
