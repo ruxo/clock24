@@ -27,6 +27,10 @@
                 var canvas = $("#clock");
                 var g = canvas.get(0).getContext("2d");
 
+                var logicalWidth = 1000;
+                var logicalHeight = 1000;
+                var ratio = logicalHeight / logicalWidth;
+
                 var w = $(window).width();
                 var h = $(window).height();
 
@@ -36,15 +40,15 @@
                 canvas.attr("width", w);
                 canvas.attr("height", h);
 
-                var dialLineWidth = w * 0.03;
-                var handLineWidth = dialLineWidth * 0.1;
-                var buttonRadius = w * 0.01;
-                var r = Math.min(w/2, h/2) - dialLineWidth/2;   // so the edge of circle is aligned with browse edge.
-                var handRadius = r * 0.8;
+                var dialLineWidth = 50;
+                var handLineWidth = 25;
+                var buttonRadius = 50;
+                var r = 1000 -dialLineWidth/2;   // so the edge of circle is aligned with browse edge.
+                var handRadius = 750;
 
                 function _drawCenterButton(){
                     g.beginPath();
-                    g.arc(cx,cy,buttonRadius,0, Math.PI*2, false); 
+                    g.arc(0,0,buttonRadius,0, Math.PI*2, false); 
                     g.closePath();
                     g.fillStyle = "silver";
                     g.fill();
@@ -52,9 +56,9 @@
                 function _drawDial(){
                     g.lineWidth = dialLineWidth;
                     g.beginPath();
-                    g.arc(cx,cy,r,0, Math.PI*2, false); 
+                    g.arc(0,0,r,0, Math.PI*2, false); 
                     g.closePath();
-                    g.strokeStyle = "white";
+                    g.strokeStyle = "linen";
                     g.stroke();
                 }
                 var midnightAngle = Math.PI/2;
@@ -63,7 +67,6 @@
 
                     g.save();
                     var timeAngle = getTimeAngle(now) + midnightAngle;
-                    g.translate(cx,cy);
                     g.rotate( timeAngle );
 
                     g.lineWidth = handLineWidth;
@@ -94,7 +97,6 @@
                     var hourAngle = hour * oneHourAngle + midnightAngle;
                     var metrics = g.measureText(hourText);
 
-                    g.translate(cx,cy);
                     g.rotate(hourAngle);
                     var startNormal = r -dialLineWidth;
                     g.translate(startNormal, 0);
@@ -121,12 +123,19 @@
                 }
 
                 self.render = function(){
-                    g.fillStyle = "black";
+                    g.save();
+                    g.fillStyle = "#222";
                     g.fillRect(0,0, w,h);
+
+                    var fitSize = Math.min(w/2, h/2);
+
+                    g.translate(cx,cy);
+                    g.scale(fitSize/logicalWidth, fitSize/logicalHeight);
 
                     _drawDial();
                     _drawHand();
                     _drawCenterButton();
+                    g.restore();
                 };
 
                 return this;
