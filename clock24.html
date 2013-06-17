@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>24 Clock</title>
+        <style>
+            * { margin: 0; padding: 0 }
+            html, body { height: 100%; width: 100% }
+            canvas { display: block }
+        </style>
+    </head>
+    <body>
+        <canvas id="clock"></canvas>
+        <script src="jquery-2.0.2.min.js" ></script>
+        <script>
+            $(document).ready(main);
+
+            function main(){
+                var clock = new Clock();
+                clock.render();
+                setInterval(function(){
+                    clock.render();
+                }, 1000);
+            }
+            function Clock(){
+                var self = this;
+
+                var canvas = $("#clock");
+                var g = canvas.get(0).getContext("2d");
+
+                var w = $(window).width();
+                var h = $(window).height();
+
+                var cx = w/2;
+                var cy = h/2;
+
+                canvas.attr("width", w);
+                canvas.attr("height", h);
+
+                var dialLineWidth = w * 0.03;
+                var handLineWidth = dialLineWidth * 0.1;
+                var buttonRadius = w * 0.01;
+                var r = Math.min(w/2, h/2) - dialLineWidth/2;   // so the edge of circle is aligned with browse edge.
+                var handRadius = r * 0.8;
+
+                function _drawCenterButton(){
+                    g.beginPath();
+                    g.arc(cx,cy,buttonRadius,0, Math.PI*2, false); 
+                    g.closePath();
+                    g.fillStyle = "silver";
+                    g.fill();
+                }
+                function _drawDial(){
+                    g.lineWidth = dialLineWidth;
+                    g.beginPath();
+                    g.arc(cx,cy,r,0, Math.PI*2, false); 
+                    g.closePath();
+                    g.strokeStyle = "white";
+                    g.stroke();
+                }
+                var midnightAngle = Math.PI/2;
+                function _drawHand(){
+                    var now = new Date();
+
+                    g.save();
+                    var timeAngle = getTimeAngle(now) + midnightAngle;
+                    g.translate(cx,cy);
+                    g.rotate( timeAngle );
+
+                    g.lineWidth = handLineWidth;
+                    g.strokeStyle = "red";
+                    g.beginPath();
+                    g.moveTo(0,0);
+                    g.lineTo(handRadius, 0);
+                    g.closePath();
+                    g.stroke();
+
+                    var minute100 = (now.getMinutes() * 60 + now.getSeconds()) / 36;
+                    g.fillStyle = "red";
+                    g.font = "2em sans-serif";
+                    g.fillText(minute100.toFixed(1), buttonRadius, -handLineWidth);
+                    g.restore();
+
+                    for(var i=1; i<=24; ++i)
+                        _drawHour(i);
+                    //_drawHour(now.getHours());
+                    //_drawHour(now.getHours() + 1);
+                }
+                function _drawHour(hour){
+                    g.save();
+                    g.font = "40px serif";
+
+                    var hourText = hour;
+
+                    var hourAngle = hour * oneHourAngle + midnightAngle;
+                    var metrics = g.measureText(hourText);
+
+                    g.translate(cx,cy);
+                    g.rotate(hourAngle);
+                    var startNormal = r -dialLineWidth;
+                    g.translate(startNormal, 0);
+
+                    g.fillStyle = "red";
+                    g.beginPath();
+                    g.arc(0,0,2,0,Math.PI*2,false);
+                    g.closePath();
+                    g.fill();
+
+                    g.rotate( -hourAngle);
+                    g.translate(-metrics.width/2, 10);
+
+                    g.fillStyle = "gray";
+                    g.fillText(hourText, 0,0);
+                    g.restore();
+                }
+                var oneHourAngle = Math.PI/12;
+                function getTimeAngle(now){
+                    var hourAngle = now.getHours() * oneHourAngle;
+                    var minuteAngle = now.getMinutes() * oneHourAngle / 60;
+                    var secondAngle = now.getSeconds() * oneHourAngle / 3600;
+                    return hourAngle + minuteAngle + secondAngle;
+                }
+
+                self.render = function(){
+                    g.fillStyle = "black";
+                    g.fillRect(0,0, w,h);
+
+                    _drawDial();
+                    _drawHand();
+                    _drawCenterButton();
+                };
+
+                return this;
+            }
+        </script>
+    </body>
+</html>
