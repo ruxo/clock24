@@ -133,17 +133,21 @@
                 }
                 var MINUTE_GAP_ANGLE = Math.PI * 0.4/180;
                 function _drawMinuteFraction(now){
+                    _drawMinuteFractionBars(now.getHours(), 3600, "dimgrey");
+                    _drawMinuteFractionBars(now.getHours(), getHourSeconds(now), "lime");
+                }
+                function _drawMinuteFractionBars(hour, hourSeconds, color){
                     var fractionLength = dialLineWidth;
 
                     var fullMinuteRadius = oneHourAngle -HOUR_TICK_HALF_ANGLE*2 -MINUTE_GAP_ANGLE*3;
 
-                    var minuteFraction = fullMinuteRadius * getHourSeconds(now)/3600;
+                    var minuteFraction = fullMinuteRadius * hourSeconds/3600;
 
                     g.lineWidth = fractionLength;
                     g.lineCap = "butt";
-                    g.strokeStyle = "lime";
+                    g.strokeStyle = color;
 
-                    var startAngle = getHourAngle(now.getHours()) +HOUR_TICK_HALF_ANGLE;
+                    var startAngle = getHourAngle(hour) +HOUR_TICK_HALF_ANGLE;
 
                     while(minuteFraction > 0){
                         var segmentAngle = Math.min(minuteFraction, fullMinuteRadius/4);
