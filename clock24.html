@@ -42,7 +42,9 @@
                 canvas.attr("width", w);
                 canvas.attr("height", h);
 
-                var BACKGROUND_COLOR = "#222";
+                var BACKGROUND_COLOR = "#181818";
+                var HAND_COLOR = "red";
+                var DIAL_COLOR = "linen";
 
                 var dialLineWidth = 50;
                 var handLineWidth = 25;
@@ -55,7 +57,7 @@
                     g.beginPath();
                     g.arc(0,0,buttonRadius,0, Math.PI*2, false); 
                     g.closePath();
-                    g.fillStyle = "red";
+                    g.fillStyle = HAND_COLOR;
                     g.fill();
 
                     g.beginPath();
@@ -69,35 +71,33 @@
                     g.beginPath();
                     g.arc(0,0,r,0, Math.PI*2, false); 
                     g.closePath();
-                    g.strokeStyle = "linen";
+                    g.strokeStyle = DIAL_COLOR;
                     g.stroke();
                 }
                 var midnightAngle = Math.PI/2;
-                function _drawHand(){
-                    var now = new Date();
-
+                function _drawHand(now){
                     g.save();
                     var timeAngle = getTimeAngle(now) + midnightAngle;
                     g.rotate( timeAngle );
 
                     g.lineWidth = handLineWidth;
                     g.lineCap = 'round';
-                    g.strokeStyle = "red";
+                    g.strokeStyle = HAND_COLOR;
                     g.beginPath();
                     g.moveTo(0,0);
                     g.lineTo(handRadius, 0);
                     g.stroke();
 
-                    var minute100 = (now.getMinutes() * 60 + now.getSeconds()) / 36;
-                    g.fillStyle = "red";
-                    g.font = "50px sans-serif";
-                    g.fillText(minute100.toFixed(1), buttonRadius, -handLineWidth);
+//                  var minute100 = getHourSeconds(now) / 36;
+//                  g.fillStyle = HAND_COLOR;
+//                  g.font = "24px sans-serif";
+//                  g.fillText(minute100.toFixed(1), buttonRadius, -handLineWidth);
                     g.restore();
                 }
                 var HOUR_TICK_HALF_ANGLE = Math.PI/180;
                 function _drawHour(hour){
                     g.save();
-                    var hourAngle = hour * oneHourAngle + midnightAngle;
+                    var hourAngle = getHourAngle(hour);
 
                     // draw hour tick
                     var tickLength = dialLineWidth;
@@ -105,6 +105,7 @@
                     g.arc(0,0,r-dialLineWidth+1, hourAngle-HOUR_TICK_HALF_ANGLE, hourAngle+HOUR_TICK_HALF_ANGLE, false);
                     g.lineWidth = tickLength;
                     g.lineCap = "butt";
+                    g.strokeStyle = DIAL_COLOR;
                     g.stroke();
 
                     g.font = "72px serif";
@@ -117,7 +118,7 @@
                     var startNormal = r -130;
                     g.translate(startNormal, 0);
 
-                    g.fillStyle = "red";
+                    g.fillStyle = HAND_COLOR;
                     g.beginPath();
                     g.arc(0,0,2,0,Math.PI*2,false);
                     g.closePath();
@@ -130,6 +131,31 @@
                     g.fillText(hourText, 0,0);
                     g.restore();
                 }
+                var MINUTE_GAP_ANGLE = Math.PI * 0.4/180;
+                function _drawMinuteFraction(now){
+                    var fractionLength = dialLineWidth;
+
+                    var fullMinuteRadius = oneHourAngle -HOUR_TICK_HALF_ANGLE*2 -MINUTE_GAP_ANGLE*3;
+
+                    var minuteFraction = fullMinuteRadius * getHourSeconds(now)/3600;
+
+                    g.lineWidth = fractionLength;
+                    g.lineCap = "butt";
+                    g.strokeStyle = "lime";
+
+                    var startAngle = getHourAngle(now.getHours()) +HOUR_TICK_HALF_ANGLE;
+
+                    while(minuteFraction > 0){
+                        var segmentAngle = Math.min(minuteFraction, fullMinuteRadius/4);
+
+                        g.beginPath();
+                        g.arc(0,0,r-dialLineWidth, startAngle, startAngle+segmentAngle, false);
+                        g.stroke();
+
+                        startAngle += segmentAngle +MINUTE_GAP_ANGLE;
+                        minuteFraction -= segmentAngle;
+                    }
+                }
                 var oneHourAngle = Math.PI/12;
                 function getTimeAngle(now){
                     var hourAngle = now.getHours() * oneHourAngle;
@@ -137,8 +163,16 @@
                     var secondAngle = now.getSeconds() * oneHourAngle / 3600;
                     return hourAngle + minuteAngle + secondAngle;
                 }
+                function getHourSeconds(now){
+                    return now.getMinutes()*60 + now.getSeconds();
+                }
+                function getHourAngle(hour){
+                    return hour * oneHourAngle + midnightAngle;
+                }
 
                 self.render = function(){
+                    var now = new Date();
+
                     g.save();
                     g.fillStyle = BACKGROUND_COLOR;
                     g.fillRect(0,0, w,h);
@@ -149,8 +183,9 @@
                     g.scale(fitSize/logicalWidth, fitSize/logicalHeight);
 
                     _drawDial();
-                    _drawHand();
+                    _drawHand(now);
                     _drawCenterButton();
+                    _drawMinuteFraction(now);
 
                     for(var i=1; i<=24; ++i)
                         _drawHour(i);
