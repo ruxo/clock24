@@ -18,7 +18,7 @@
                 var clock = new Clock();
                 clock.render();
                 setInterval(function(){
-                    clock.render();
+                    clock.renderUpdate();
                 }, 1000);
             }
             function Clock(){
@@ -41,6 +41,8 @@
 
                 canvas.attr("width", w);
                 canvas.attr("height", h);
+
+                var fitSize = Math.min(w/2, h/2);
 
                 var BACKGROUND_COLOR = "#181818";
                 var HAND_COLOR = "red";
@@ -153,7 +155,7 @@
                         var segmentAngle = Math.min(minuteFraction, fullMinuteRadius/4);
 
                         g.beginPath();
-                        g.arc(0,0,r-dialLineWidth, startAngle, startAngle+segmentAngle, false);
+                        g.arc(0,0,r-dialLineWidth+1, startAngle, startAngle+segmentAngle, false);
                         g.stroke();
 
                         startAngle += segmentAngle +MINUTE_GAP_ANGLE;
@@ -181,8 +183,6 @@
                     g.fillStyle = BACKGROUND_COLOR;
                     g.fillRect(0,0, w,h);
 
-                    var fitSize = Math.min(w/2, h/2);
-
                     g.translate(cx,cy);
                     g.scale(fitSize/logicalWidth, fitSize/logicalHeight);
 
@@ -195,9 +195,35 @@
                         _drawHour(i);
                         
                     g.restore();
-                };
 
-                return this;
+                    self.lastUpdate = now;
+                };
+                self.renderUpdate = function(){
+                    var now = new Date();
+
+                    if (self.lastUpdate.getHours() != now.getHours()){
+                        self.lastUpdate = now;
+                        self.render();  // perform full update when hour changed.
+                        return;
+                    }
+
+                    g.save();
+                    g.translate(cx,cy);
+                    g.scale(fitSize/logicalWidth, fitSize/logicalHeight);
+
+                    g.fillStyle = BACKGROUND_COLOR;
+                    g.beginPath();
+                    g.arc(0,0, handRadius+50, 0,Math.PI*2,false); // 50 = cap
+                    g.fill();
+
+                    _drawHand(now);
+                    _drawCenterButton();
+                    _drawMinuteFraction(now);
+
+                    g.restore();
+
+                    self.lastUpdate = now;
+                };
             }
         </script>
     </body>
