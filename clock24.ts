@@ -1,6 +1,98 @@
 /// <reference path="typings/jquery/jquery.d.ts" />
 /// <reference path="ramda.d.ts" />
 
+const _ = R.__;
+
+interface Rect {
+    left: number;
+    top: number;
+    right: number;
+    bottom: number;
+}
+
+const BACKGROUND_COLOR = "#181818";
+const HAND_COLOR = "red";
+const DIAL_COLOR = "linen";
+const oneHourAngle = Math.PI/12;
+const midnightAngle = Math.PI/2;
+
+const HOUR_TICK_HALF_ANGLE = Math.PI/180;
+const MINUTE_GAP_ANGLE = Math.PI * 0.4/180;
+
+const dialLineWidth = 50;
+const handLineWidth = 25;
+const buttonRadius = 50;
+const innerButton = 30;
+const innerDialRadius = 1000 -dialLineWidth/2;   // so the edge of circle is aligned with browse edge.
+const handRadius = 750;
+const minuteRadius = innerDialRadius - dialLineWidth+1;
+
+let getHourAngle = R.compose(R.add(midnightAngle), R.multiply(oneHourAngle));
+
+function getHourSeconds(now){
+    return now.getMinutes()*60 + now.getSeconds();
+}
+
+function getTimeAngle(now){
+    var hourAngle = now.getHours() * oneHourAngle;
+    var minuteAngle = now.getMinutes() * oneHourAngle / 60;
+    var secondAngle = now.getSeconds() * oneHourAngle / 3600;
+    return hourAngle + minuteAngle + secondAngle;
+}
+
+function getWindowSize() {
+  return [ window.innerWidth, window.innerHeight ];
+}
+
+// ------------ drawing operations --------------
+const logicalWidth = 1000;
+const logicalHeight = 1000;
+
+let fillStyle = R.curry((color, g: CanvasRenderingContext2D) => {
+    g.fillStyle = color;
+    return g;
+});
+
+let fill0 = (g: CanvasRenderingContext2D) => {
+    g.fill();
+    return g;
+};
+
+let fill = color => R.compose(fill0, fillStyle(color));
+
+let stroke = R.curry((color, g: CanvasRenderingContext2D) => {
+    g.strokeStyle = color;
+    g.stroke();
+    return g;
+});
+
+let arc0 = R.curry((spec: number[], r:number, g:CanvasRenderingContext2D) => {
+    let [start, end] = spec;
+    g.arc(0,0, r, start, end, false);
+    return g;
+});
+
+let circle0 = arc0([0, Math.PI*2]);
+
+let drawCircle = R.curry((radius: number, drawOp: Function, g: CanvasRenderingContext2D) => {
+    g.beginPath();
+    circle0(radius, g);
+    g.closePath();
+    drawOp(g);
+    return g;
+});
+
+let getCanvas = <((canvas_id: string) => HTMLCanvasElement)> document.getElementById.bind(document);
+let get2DCanvas = (canvas: HTMLCanvasElement) => canvas.getContext("2d");
+
+let safeState = R.curry((f: Function, g: CanvasRenderingContext2D) => {
+    g.save();
+    let ret = f(g);
+    g.restore();
+    return ret;
+    });
+
+// ----------------- MAIN ---------------------
 $(document).ready(main);
 
 function main(){
@@ -13,15 +105,12 @@ function main(){
 function Clock(){
     var self = this;
 
-    var canvas = <HTMLCanvasElement> document.getElementById("clock");
-    var g = canvas.getContext("2d");
+    var canvas = getCanvas("clock");
+    var g = get2DCanvas(canvas);
 
-    var logicalWidth = 1000;
-    var logicalHeight = 1000;
     var ratio = logicalHeight / logicalWidth;
 
-    var w = $(window).width();
-    var h = $(window).height();
+    let [w,h] = getWindowSize();
 
     var cx = w/2;
     var cy = h/2;
@@ -29,41 +118,16 @@ function Clock(){
     canvas.width = w;
     canvas.height = h;;
 
-    var fitSize = Math.min(w/2, h/2);
+    const fitSize = Math.min(w/2, h/2);
 
-    var BACKGROUND_COLOR = "#181818";
-    var HAND_COLOR = "red";
-    var DIAL_COLOR = "linen";
-
-    var dialLineWidth = 50;
-    var handLineWidth = 25;
-    var buttonRadius = 50;
-    var innerButton = 30;
-    var r = 1000 -dialLineWidth/2;   // so the edge of circle is aligned with browse edge.
-    var handRadius = 750;
-
-    function _drawCenterButton(){
-        g.beginPath();
-        g.arc(0,0,buttonRadius,0, Math.PI*2, false);
-        g.closePath();
-        g.fillStyle = HAND_COLOR;
-        g.fill();
-
-        g.beginPath();
-        g.arc(0,0,innerButton,0, Math.PI*2, false);
-        g.closePath();
-        g.fillStyle = BACKGROUND_COLOR;
-        g.fill();
-    }
+    let _drawCenterButton = R.compose(
+        drawCircle(innerButton, fill(BACKGROUND_COLOR)),
+        drawCircle(buttonRadius, fill(HAND_COLOR))
+    );
     function _drawDial(){
         g.lineWidth = dialLineWidth;
-        g.beginPath();
-        g.arc(0,0,r,0, Math.PI*2, false);
-        g.closePath();
-        g.strokeStyle = DIAL_COLOR;
-        g.stroke();
+        drawCircle(innerDialRadius, stroke(DIAL_COLOR), g);
     }
-    var midnightAngle = Math.PI/2;
     function _drawHand(now){
         g.save();
         var timeAngle = getTimeAngle(now) + midnightAngle;
@@ -71,19 +135,18 @@ function Clock(){
 
         g.lineWidth = handLineWidth;
         g.lineCap = 'round';
-        g.strokeStyle = HAND_COLOR;
         g.beginPath();
         g.moveTo(0,0);
         g.lineTo(handRadius, 0);
+        g.strokeStyle = HAND_COLOR;
         g.stroke();
 
-//                  var minute100 = getHourSeconds(now) / 36;
-//                  g.fillStyle = HAND_COLOR;
-//                  g.font = "24px sans-serif";
-//                  g.fillText(minute100.toFixed(1), buttonRadius, -handLineWidth);
+                 var minute100 = getHourSeconds(now) / 36;
+                 g.fillStyle = HAND_COLOR;
+                 g.font = "24px sans-serif";
+                 g.fillText(minute100.toFixed(1), buttonRadius, -handLineWidth);
         g.restore();
     }
-    var HOUR_TICK_HALF_ANGLE = Math.PI/180;
     function _drawHour(hour){
         g.save();
         var hourAngle = getHourAngle(hour);
@@ -91,11 +154,10 @@ function Clock(){
         // draw hour tick
         var tickLength = dialLineWidth;
         g.beginPath();
-        g.arc(0,0,r-dialLineWidth+1, hourAngle-HOUR_TICK_HALF_ANGLE, hourAngle+HOUR_TICK_HALF_ANGLE, false);
+        g.arc(0,0,innerDialRadius-dialLineWidth+1, hourAngle-HOUR_TICK_HALF_ANGLE, hourAngle+HOUR_TICK_HALF_ANGLE, false);
         g.lineWidth = tickLength;
         g.lineCap = "butt";
-        g.strokeStyle = DIAL_COLOR;
-        g.stroke();
+        stroke(DIAL_COLOR, g);
 
         g.font = "72px serif";
 
@@ -104,14 +166,10 @@ function Clock(){
         var metrics = g.measureText(hourText);
 
         g.rotate(hourAngle);
-        var startNormal = r -130;
+        var startNormal = innerDialRadius -130;
         g.translate(startNormal, 0);
 
-        g.fillStyle = HAND_COLOR;
-        g.beginPath();
-        g.arc(0,0,2,0,Math.PI*2,false);
-        g.closePath();
-        g.fill();
+        drawCircle(2, fill(HAND_COLOR), g);
 
         g.rotate( -hourAngle);
         g.translate(-metrics.width/2, 25);
@@ -120,7 +178,6 @@ function Clock(){
         g.fillText(hourText, 0,0);
         g.restore();
     }
-    var MINUTE_GAP_ANGLE = Math.PI * 0.4/180;
     function _drawMinuteFraction(now){
         _drawMinuteFractionBars(now.getHours(), 3600, "dimgrey");
         _drawMinuteFractionBars(now.getHours(), getHourSeconds(now), "lime");
@@ -134,7 +191,8 @@ function Clock(){
 
         g.lineWidth = fractionLength;
         g.lineCap = "butt";
-        g.strokeStyle = color;
+        
+        let strokeMinute = stroke(color);
 
         var startAngle = getHourAngle(hour) +HOUR_TICK_HALF_ANGLE;
 
@@ -142,31 +200,15 @@ function Clock(){
             var segmentAngle = Math.min(minuteFraction, fullMinuteRadius/4);
 
             g.beginPath();
-            g.arc(0,0,r-dialLineWidth+1, startAngle, startAngle+segmentAngle, false);
-            g.stroke();
+            arc0([startAngle, startAngle+segmentAngle], minuteRadius, g);
+            strokeMinute(g);
 
             startAngle += segmentAngle +MINUTE_GAP_ANGLE;
             minuteFraction -= segmentAngle;
         }
     }
-    var oneHourAngle = Math.PI/12;
-    function getTimeAngle(now){
-        var hourAngle = now.getHours() * oneHourAngle;
-        var minuteAngle = now.getMinutes() * oneHourAngle / 60;
-        var secondAngle = now.getSeconds() * oneHourAngle / 3600;
-        return hourAngle + minuteAngle + secondAngle;
-    }
-    function getHourSeconds(now){
-        return now.getMinutes()*60 + now.getSeconds();
-    }
-    function getHourAngle(hour){
-        return hour * oneHourAngle + midnightAngle;
-    }
-
-    self.render = function(){
-        var now = new Date();
-
-        g.save();
+    
+    let renderClock = R.curry((now: Date, g: CanvasRenderingContext2D) => {
         g.fillStyle = BACKGROUND_COLOR;
         g.fillRect(0,0, w,h);
 
@@ -175,13 +217,19 @@ function Clock(){
 
         _drawDial();
         _drawHand(now);
-        _drawCenterButton();
+        _drawCenterButton(g);
         _drawMinuteFraction(now);
 
-        for(var i=1; i<=24; ++i)
-            _drawHour(i);
+        R.range(1,25).forEach(_drawHour);
 
-        g.restore();
+        return g;
+    });
+    let safeRenderClock = R.compose(safeState, renderClock);
+
+    self.render = function(){
+        var now = new Date();
+
+        safeState(renderClock(now))(g);
 
         self.lastUpdate = now;
     };
@@ -204,7 +252,7 @@ function Clock(){
         g.fill();
 
         _drawHand(now);
-        _drawCenterButton();
+        _drawCenterButton(g);
         _drawMinuteFraction(now);
 
         g.restore();
