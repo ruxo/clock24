@@ -1,0 +1,19 @@
+{
+  "name": "clock24",
+  "version": "1.0.0",
+  "description": "Clock in 24 hours",
+  "main": "clock24.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "jquery": "^2.1.4",
+    "ramda": "^0.17.1"
+  },
+  "devDependencies": {
+    "browser-sync": "^2.8.1",
+    "gulp": "^3.9.0"
+  }
+}
