@@ -9,8 +9,11 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "core-js": "^2.4.1",
+    "fable-core": "^0.5.4",
     "jquery": "^2.1.4",
-    "ramda": "^0.17.1"
+    "ramda": "^0.17.1",
+    "webpack": "^1.13.2"
   },
   "devDependencies": {
     "browser-sync": "^2.8.1",
