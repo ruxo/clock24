@@ -1,0 +1,16 @@
+{
+  "module": "commonjs",
+  "sourceMaps": true,
+  "projFile": "./clock.fsx",
+  "outDir": "out",
+  "scripts": {
+    "postbuild": "webpack"
+  },
+  "targets": {
+    "watch": {
+      "scripts": {
+        "postbuild": "webpack-dev-server --inline --compress --colors"
+      }
+    }
+  }
+}
