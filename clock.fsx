@@ -12,6 +12,12 @@ let LogicalHeight = 1000.
 let DialLineWidth = 50.
 let InnerDialRadius = 1000. - DialLineWidth / 2.   // so the edge of circle is aligned with browse edge.
 
+let HandColor = U3.Case1 "red"
+let HandLineWidth = 25.
+let HandRadius = 750.
+
+let ButtonRadius = 50.
+
 let getWindowSize() = double(Browser.window.innerWidth), double(Browser.window.innerHeight)
 
 module Canvas =
@@ -40,8 +46,28 @@ module Canvas =
     g.stroke()
     g
 
+  let drawCapsuleLine width color (x0, y0, x1, y1) (g: Graphics) =
+    g.lineWidth <- width
+    g.lineCap <- "round"
+    g.beginPath()
+    g.moveTo (x0, y0)
+    g.lineTo (x1, y1)
+    stroke color g
+
+  let horizontalLine (size: float) = (0., 0., size, 0.)
 
 module Clock =
+  let OneHourAngle = Math.PI / 12.
+  let MidnightAngle = Math.PI / 2.
+
+  let private getTimeAngle (now: DateTime) =
+    let hourAngle = float(now.Hour) * OneHourAngle
+    let minuteAngle = float(now.Minute) * OneHourAngle / 60.
+    let secondAngle = float(now.Second) * OneHourAngle / 3600.
+    in hourAngle + minuteAngle + secondAngle
+
+  let getHourSeconds (now: DateTime) = now.Minute * 60 + now.Second
+
   type ClockInfo =
     { Size: float * float
       Center: float * float
@@ -58,7 +84,20 @@ module Clock =
 
     static member drawDial c =
       c.g.lineWidth <- DialLineWidth
-      c.g |> Canvas.drawCircle InnerDialRadius (Canvas.stroke DialColor >> ignore)
+      c.g |> Canvas.drawCircle InnerDialRadius (Canvas.stroke DialColor >> ignore) |> ignore
+      c
+
+    static member drawHand (now: DateTime) c =
+      let timeAngle = getTimeAngle now + MidnightAngle
+      let minute100 = (getHourSeconds now) / 36
+      c.g.rotate timeAngle
+      c.g |> Canvas.drawCapsuleLine HandLineWidth HandColor (Canvas.horizontalLine HandRadius)
+          |> ignore
+
+      c.g.fillStyle <- HandColor
+      c.g.font <- "24px sans-serif"
+      c.g.fillText (minute100.ToString(), ButtonRadius, -HandLineWidth)
+      c
 
   let safeState f clock =
     clock.g.save()
@@ -91,6 +130,7 @@ module Clock =
     clock |> clearClock BackgroundColor
           |> ClockInfo.enterLogicalFrame 
           |> ClockInfo.drawDial
+          |> ClockInfo.drawHand dt
 
   let render = safeState (renderTime DateTime.Now)
 
@@ -98,4 +138,4 @@ module Clock =
 let size = getWindowSize()
 let clock = Clock.getCanvas() |> Clock.createClock size
 let render() = Clock.render clock
-Browser.window.setTimeout(render, 1000) |> ignore
+Browser.window.setInterval(render, 1000) |> ignore
