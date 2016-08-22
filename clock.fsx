@@ -132,7 +132,7 @@ module Clock =
           |> ClockInfo.drawDial
           |> ClockInfo.drawHand dt
 
-  let render = safeState (renderTime DateTime.Now)
+  let render clock = clock |> safeState (renderTime DateTime.Now)
 
 
 let size = getWindowSize()
