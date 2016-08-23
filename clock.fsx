@@ -4,6 +4,8 @@ open System
 open Fable.Core
 open Fable.Import
 
+let sideEffect f x = f(x); x
+
 let BackgroundColor = U3.Case1 "#181818"
 let DialColor = U3.Case1 "linen"
 
@@ -17,16 +19,31 @@ let HandLineWidth = 25.
 let HandRadius = 750.
 
 let ButtonRadius = 50.
+let InnerButton = 30.
 
 let getWindowSize() = double(Browser.window.innerWidth), double(Browser.window.innerHeight)
 
 module Canvas =
   type Graphics = Browser.CanvasRenderingContext2D
 
-  let fill rect color (g: Graphics) =
-    g.fillStyle <- color
-    g.fillRect rect
-    g
+  let inline beginPath (g: Graphics) = g.beginPath(); g
+  let inline closePath (g: Graphics) = g.closePath(); g
+
+  let inline lineWidth width (g: Graphics) = g.lineWidth <- width; g
+  let inline lineCap type' (g: Graphics) = g.lineCap <- type'; g
+
+  let inline moveTo pos (g: Graphics) = g.moveTo pos; g
+  let inline lineTo pos (g: Graphics) = g.lineTo pos; g
+
+  let inline fillStyle color (g: Graphics) = g.fillStyle <- color; g
+  let inline fillRect rect (g: Graphics) = g.fillRect rect; g
+  let fillRectWith color rect = fillStyle color >> fillRect rect
+  let inline _fill (g: Graphics) = g.fill(); g
+  let fill color = fillStyle color >> _fill
+
+  let inline strokeStyle color (g: Graphics) = g.strokeStyle <- color; g
+  let inline _stroke (g: Graphics) = g.stroke(); g
+  let stroke color = strokeStyle color >> _stroke
 
   let private arc0 (start, end') radius (g: Graphics) =
     g.arc(0., 0., radius, start, end', false)
@@ -34,25 +51,14 @@ module Canvas =
 
   let private circle0 : float -> Graphics -> Graphics = arc0 (0., Math.PI*2.)
 
-  let drawCircle radius drawOp (g: Graphics) =
-    g.beginPath()
-    circle0 radius g |> ignore
-    g.closePath()
-    drawOp g
-    g
+  let drawCircle radius drawOp =
+    beginPath >> circle0 radius >> closePath >> sideEffect(drawOp)
 
-  let stroke color (g: Graphics) =
-    g.strokeStyle <- color
-    g.stroke()
-    g
-
-  let drawCapsuleLine width color (x0, y0, x1, y1) (g: Graphics) =
-    g.lineWidth <- width
-    g.lineCap <- "round"
-    g.beginPath()
-    g.moveTo (x0, y0)
-    g.lineTo (x1, y1)
-    stroke color g
+  let drawCapsuleLine width color (x0, y0, x1, y1) =
+    lineWidth width
+    >> lineCap "round"
+    >> beginPath >> moveTo (x0, y0) >> lineTo (x1, y1)
+    >> stroke color
 
   let horizontalLine (size: float) = (0., 0., size, 0.)
 
@@ -89,15 +95,22 @@ module Clock =
 
     static member drawHand (now: DateTime) c =
       let timeAngle = getTimeAngle now + MidnightAngle
-      let minute100 = (getHourSeconds now) / 36
+      let minute100 = float(getHourSeconds now) / 36.
       c.g.rotate timeAngle
       c.g |> Canvas.drawCapsuleLine HandLineWidth HandColor (Canvas.horizontalLine HandRadius)
           |> ignore
 
       c.g.fillStyle <- HandColor
       c.g.font <- "24px sans-serif"
-      c.g.fillText (minute100.ToString(), ButtonRadius, -HandLineWidth)
+      c.g.fillText (String.Format("{0:F1}", minute100), ButtonRadius, -HandLineWidth)
       c
+
+    static member drawCenterButton c =
+      c.g |> Canvas.drawCircle ButtonRadius (Canvas.fill HandColor >> ignore)
+          |> Canvas.drawCircle InnerButton (Canvas.fill BackgroundColor >> ignore)
+          |> ignore
+      c
+
 
   let safeState f clock =
     clock.g.save()
@@ -106,7 +119,7 @@ module Clock =
     x
 
   let clearClock color clock =
-    clock.g |> Canvas.fill (0., 0., clock.Width, clock.Height) color
+    clock.g |> Canvas.fillRectWith color (0., 0., clock.Width, clock.Height)
             |> ignore 
     clock
 
@@ -131,6 +144,7 @@ module Clock =
           |> ClockInfo.enterLogicalFrame 
           |> ClockInfo.drawDial
           |> ClockInfo.drawHand dt
+          |> ClockInfo.drawCenterButton
 
   let render clock = clock |> safeState (renderTime DateTime.Now)
 
